@@ -13,7 +13,8 @@ def index():
     return "home"
 
 @app.route("/getTactics")
-def index():
+@cross_origin("http://localhost:3000")
+def getTactics():
     # pgn = request.args.get("pgn")
 
     result = ["tactic1", "tactic2", "tactic3"]
