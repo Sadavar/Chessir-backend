@@ -17,7 +17,8 @@ def index():
 @app.route("/getTactics", methods=['GET'])
 def getTactics():
     result = ["tactic1", "tactic2", "tactic3"]
-    result = os.getcwd() 
+    result = os.getcwd()
+    result.append(os.listdir())
     response = jsonify(result)
 
     pgn = request.args.get('pgns')
