@@ -19,12 +19,14 @@ def getTactics():
     result = ["tactic1", "tactic2", "tactic3"]
     result = os.getcwd()
     result.append(os.listdir())
+    # result.append(os.path.realpath())
+
     response = jsonify(result)
 
     pgn = request.args.get('pgns')
     pgn = io.StringIO(pgn)
     game = chess.pgn.read_game(pgn)
-    engine = chess.engine.SimpleEngine.popen_uci("/stockfish")
+    # engine = chess.engine.SimpleEngine.popen_uci("/stockfish")
 
     return response
 
