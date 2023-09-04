@@ -2,6 +2,7 @@ import chess
 import chess.engine
 import chess.pgn
 import io
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 
@@ -16,12 +17,13 @@ def index():
 @app.route("/getTactics", methods=['GET'])
 def getTactics():
     result = ["tactic1", "tactic2", "tactic3"]
+    result = os.getcwd() 
     response = jsonify(result)
 
     pgn = request.args.get('pgns')
     pgn = io.StringIO(pgn)
     game = chess.pgn.read_game(pgn)
-    engine = chess.engine.SimpleEngine.popen_uci("stockfish")
+    # engine = chess.engine.SimpleEngine.popen_uci("stockfish")
 
     return response
 
