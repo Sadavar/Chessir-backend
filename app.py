@@ -13,13 +13,13 @@ def index():
     return "home"
 
 @app.route("/getTactics", methods=['GET'])
-@cross_origin("http://localhost:3000")
+# @cross_origin("http://localhost:3000")
 def getTactics():
     # pgn = request.args.get("pgn")
 
     result = ["tactic1", "tactic2", "tactic3"]
     response = jsonify(result)
-    # response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
 # print("python working!")
