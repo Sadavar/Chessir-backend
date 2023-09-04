@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
-# CORS(app)
+CORS(app, origins=["http://localhost:3000"])
 
 @app.route("/")
 def index():
@@ -19,7 +19,7 @@ def getTactics():
 
     result = ["tactic1", "tactic2", "tactic3"]
     response = jsonify(result)
-    response.headers.add('Access-Control-Allow-Origin', '*')
+    # response.headers.add('Access-Control-Allow-Origin', '*')
     return response
 
 # print("python working!")
