@@ -19,6 +19,7 @@ def getTactics():
     response = jsonify(result)
 
     pgn = request.args.get('pgns')
+    pgn = io.StringIO(pgn)
     game = chess.pgn.read_game(pgn)
     # engine = chess.engine.SimpleEngine.popen_uci("stockfish")
 
