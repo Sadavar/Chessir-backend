@@ -16,8 +16,9 @@ def index():
 
 @app.route("/getTactics", methods=['GET'])
 def getTactics():
-    result = ["tactic1", "tactic2", "tactic3"]
-    result = os.getcwd()
+    # result = ["tactic1", "tactic2", "tactic3"]
+    result = []
+    result.append(os.getcwd())
     result.append(os.listdir())
     # result.append(os.path.realpath())
 
