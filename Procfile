@@ -1,1 +1,1 @@
-web: gunicorn app:app
+web: gunicorn --limit-request-line="8190" app:app
