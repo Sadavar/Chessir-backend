@@ -2,13 +2,20 @@ import chess
 import chess.engine
 import chess.pgn
 import io
-from flask import Flask
+from flask import Flask, request
 
 app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return "Hello World!"
+    return "home"
+
+@app.route("/getTactics")
+def index():
+    # pgn = request.args.get("pgn")
+
+    result = ["tactic1", "tactic2", "tactic3"]
+    return result
 
 # print("python working!")
 # quit()
