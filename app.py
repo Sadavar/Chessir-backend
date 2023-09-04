@@ -1,3 +1,5 @@
+#!/bin/sh
+
 import chess
 import chess.engine
 import chess.pgn
@@ -27,7 +29,7 @@ def getTactics():
     pgn = request.args.get('pgns')
     pgn = io.StringIO(pgn)
     game = chess.pgn.read_game(pgn)
-    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + "/stockfish")
+    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + "/stockfish-ubuntu")
 
     return response
 
