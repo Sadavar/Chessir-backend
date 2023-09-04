@@ -9,7 +9,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000"])
+CORS(app, origins=["http://localhost:3000", "https://chess-trainer-682560c6d2f7.herokuapp.com"])
 
 
 @app.route("/")
@@ -68,8 +68,6 @@ def getTactics():
             turn_counter = 0
 
     for tactic in tactics:
-        print(tactic[0])
-        print(tactic[1])
         output.append(tactic[0])
         output.append(tactic[1])
 
