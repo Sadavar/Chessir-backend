@@ -17,6 +17,11 @@ def index():
 def getTactics():
     result = ["tactic1", "tactic2", "tactic3"]
     response = jsonify(result)
+
+    pgn = request.args.get('pgns')
+    game = chess.pgn.read_game(pgn)
+    engine = chess.engine.SimpleEngine.popen_uci("stockfish")
+    
     return response
 
 # print("python working!")
