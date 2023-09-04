@@ -3,14 +3,20 @@ import chess.engine
 import chess.pgn
 import io
 from flask import Flask, request
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 @app.route("/")
+@cross_origin()
+
 def index():
     return "home"
 
 @app.route("/getTactics")
+@cross_origin()
 def index():
     # pgn = request.args.get("pgn")
 
