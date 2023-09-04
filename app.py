@@ -36,6 +36,7 @@ def getTactics():
     turn_counter = 0
     prev_score = 0
     tactics = []
+    output = []
 
     for move in game.mainline_moves():
         board.push(move)
@@ -69,11 +70,12 @@ def getTactics():
     for tactic in tactics:
         print(tactic[0])
         print(tactic[1])
-
+        output.append(tactic[0])
+        output.append(tactic[1])
 
     engine.quit()
 
-    response = jsonify(tactics)
+    response = jsonify(output)
     return response
 
 # print("python working!")
