@@ -27,7 +27,7 @@ def getTactics():
     pgn = request.args.get('pgns')
     pgn = io.StringIO(pgn)
     game = chess.pgn.read_game(pgn)
-    # engine = chess.engine.SimpleEngine.popen_uci("/stockfish")
+    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + "/stockfish")
 
     return response
 
