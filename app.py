@@ -19,9 +19,11 @@ def index():
 @app.route("/getTactics", methods=['POST'])
 def getTactics():
     puzzles = []
-    # read pgn 
-    pgn = request.get_json().get('pgn')
-    username = request.get_json().get('username')
+    # read request args
+    args = request.get_json()
+    pgn = args.get('pgn')
+    username = args.get('username')
+
     pgn = io.StringIO(pgn)
     game = chess.pgn.read_game(pgn)
     headers = game.headers
