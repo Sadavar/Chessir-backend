@@ -36,12 +36,8 @@ def getTactics():
     user_turn = 'white'
     if username in headers.get("White"):
         user_turn = 'white'
-        print("user is white")
-    elif username in headers.get("Black"):
-        user_turn = 'black'
-        print("user is black")
+    else: user_turn = 'black'
 
-    move_counter = 1
     prev_turn_score = 0
     turn = 'white'
     # simulate moves
@@ -82,7 +78,7 @@ def getTactics():
             if(turn == 'white'):
                 best_score = info["score"].white().score()
                 best_move_diff = abs(best_score - after_score_white)
-            if(turn == 'black'):
+            else:
                 best_score = info["score"].black().score()
                 best_move_diff = abs(best_score - after_score_black)
                 
