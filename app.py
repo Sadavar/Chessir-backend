@@ -17,7 +17,6 @@ def index():
     return "home"
 
 @app.route("/getTactics", methods=['POST'])
-@cross_origin()
 def getTactics():
     puzzles = []
     # read pgn 
