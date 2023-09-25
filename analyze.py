@@ -1,5 +1,4 @@
 #!/bin/sh
-
 import chess
 import chess.engine
 import chess.pgn
@@ -9,15 +8,8 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import json
 
-app = Flask(__name__)
-CORS(app, origins=["http://localhost:3000", "https://chess-trainer-682560c6d2f7.herokuapp.com"])
+__name__ = "__analyze__"
 
-
-@app.route("/")
-def index():
-    return "home"
-
-@app.route("/getTactics", methods=['POST'])
 def getTactics2():
     puzzles = []
     # read pgn 
@@ -26,13 +18,12 @@ def getTactics2():
     
     # configure game and engine
     game = chess.pgn.read_game(pgn)
-    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
+    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
     board = game.board()
 
     move_counter = 1
     prev_turn_score = 0
     turn = 'white'
-    
     # simulate moves
     for move in game.mainline_moves():
         # get eval of position 
@@ -53,15 +44,15 @@ def getTactics2():
         after_score_white = info["score"].white().score()
         after_score_black = after_score_white * -1
 
-        # print("Move:", move_counter, ",", move, "Turn:", turn)
-        # print("Before White Score: ", before_score_white, "Before Black Score:", before_score_black)
-        # print("After White Score: ", after_score_white, "After Black Score:", after_score_black)
+        print("Move:", move_counter, ",", move, "Turn:", turn)
+        print("Before White Score: ", before_score_white, "Before Black Score:", before_score_black)
+        print("After White Score: ", after_score_white, "After Black Score:", after_score_black)
 
         tactic_threshold = 300
         # check if oppenent made a bad move
         if(prev_turn_score > tactic_threshold):
             # check if the tactic was missed
-            # print("move: ", move, "best_move: ", best_move)
+            print("move: ", move, "best_move: ", best_move)
             board.pop()
             board.push(best_move)
             info = engine.analyse(board, chess.engine.Limit(time=0.05))
@@ -75,13 +66,13 @@ def getTactics2():
                 best_score = info["score"].black().score()
                 best_move_diff = abs(best_score - after_score_black)
                 
-            # print("Best Score: ", best_score)
+            print("Best Score: ", best_score)
 
             best_move_diff_threshold = 50
             # check if the tactic was missed by threshold, a decent but not best move is allowed
             if(best_move_diff > best_move_diff_threshold):
-                # print("Tactic Missed----------------------------------------------------")
-                # print("Best Move: ", best_move, "Best Score: ", best_score)
+                print("Tactic Missed----------------------------------------------------")
+                print("Best Move: ", best_move, "Best Score: ", best_score)
 
                 board.push(best_move)
                 best_fen = board.fen()
@@ -100,17 +91,17 @@ def getTactics2():
         if(turn == 'black'): 
             prev_turn_score = abs(after_score_black - before_score_black)
 
-        # move_counter += 1
+        move_counter += 1
     
     engine.quit()
 
     # print out puzzles 
-    # for puzzle in puzzles:
-    #     print(puzzle[0])
-    #     print(puzzle[1])
+    for puzzle in puzzles:
+        print(puzzle[0])
+        print(puzzle[1])
 
     response = json.dumps(puzzles)
-    # print(response)
+    print(response)
     return response
 
 
@@ -120,9 +111,12 @@ def getTactics():
     result.append(os.getcwd())
     result.append(os.listdir())
 
-    pgn = request.get_json()
+    # read pgn from pgn.txt
+    pgn = open("pgn.txt", "r").read()    
+    # pgn = request.get_json()
     
-    response = jsonify(result)
+    # response = jsonify(result)
+
 
     # pgn = request.args.get('pgns')
     print("pgn: " + pgn)
@@ -178,6 +172,14 @@ def getTactics():
     engine.quit()
 
     # response = jsonify(output)
-    print(response)
     response = json.dumps(output)
+    print(response)
+
     return response
+
+def main():
+
+    getTactics2()
+
+if __name__ == "__analyze__":
+    main()
