@@ -30,7 +30,7 @@ def getTactics():
 
     
     # configure game and engine
-    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
     board = game.board()
 
     user_turn = 'white'
