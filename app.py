@@ -21,7 +21,7 @@ def index():
 def getTactics2():
     puzzles = []
     # read pgn 
-    pgn = open("pgn.txt", "r").read()
+    pgn = request.get_json()
     pgn = io.StringIO(pgn)
     
     # configure game and engine
