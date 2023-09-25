@@ -24,6 +24,7 @@ def getTactics2():
     move_counter = 1
     prev_turn_score = 0
     turn = 'white'
+    
     # simulate moves
     for move in game.mainline_moves():
         # get eval of position 
