@@ -1,7 +1,7 @@
 [Site "Chess.com"]
 [Date "2023.09.03"]
 [Round "-"]
-[White "Benito123456789"]
+[White "sadavar"]
 [Black "SobrangCute"]
 [Result "0-1"]
 [CurrentPosition "4q2k/1p6/p7/6p1/3P2P1/2P1KP2/PP6/8 w - -"]
