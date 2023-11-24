@@ -29,7 +29,8 @@ def getTactics():
     headers = game.headers
     
     # configure game and engine
-    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+    # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+    engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
     board = game.board()
     
     # configure board settings
