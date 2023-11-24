@@ -26,11 +26,13 @@
 [BlackCountry "2"]
 [BlackTitle ""]
 
-1. e4 e5 2. Nc3 Nc6 3. f4 Nf6 4. Nf3 d6 5. Bb5 Bg4 6. d3 a6 7. Bxc6+ bxc6 8. O-O
-Be7 9. Qe1 Bxf3 10. Rxf3 c5 11. fxe5 dxe5 12. Qg3 Rg8 13. b3 Qd6 14. Bb2 h6 15.
-a4 Nh5 16. Qf2 Bf6 17. Rf1 (17. Nd5 Be7 (17... Rd8 18. g3) (17... c6) 18. Rf5)
-17... O-O-O 18. a5 Qd4 19. Qxd4 cxd4 20. Na4 Nf4 21. R1f2 Be7 22. Ba1 f6 23. Nb2
-Ng6 24. Nc4 Bb4 25. Bb2 Ne7 26. h3 Nc6 27. g4 Nxa5 28. Nxa5 Bxa5 29. Rf1 Bb4 30.
-Ra1 a5 31. Rff1 Rd6 32. Kg2 g6 33. Kg3 h5 34. gxh5 gxh5+ 35. Kh4 Rg5 36. Rg1
-Rxg1 37. Rxg1 f5 38. Rg8+ Kd7 39. exf5 Rf6 40. Rg7+ Kd6 41. Rg5 Ke7 42. Kxh5 Bd6
-43. Bc1 Kf7 0-1
+1. e4 e5 2. Nc3 Nc6 3. f4 (3. d4) 3... Nf6 (3... exf4 4. Nf3 g5 {-0.81} 5. h3
+Bg7 6. d4 h5 {-0.98} 7. g3 g4 {-0.36} (7... fxg3) (7... d5 8. e5 (8. exd5 Nb4
+{-1.29})) 8. hxg4 hxg4 9. Rxh8 Bxh8 10. Nh2 fxg3 11. Qxg4 gxh2 12. Qxg8+) 4. Nf3
+d6 5. Bb5 Bg4 6. d3 a6 7. Bxc6+ bxc6 8. O-O Be7 9. Qe1 Bxf3 10. Rxf3 c5 11. fxe5
+dxe5 12. Qg3 Rg8 13. b3 Qd6 14. Bb2 h6 15. a4 Nh5 16. Qf2 Bf6 17. Rf1 (17. Nd5
+Be7 (17... Rd8 18. g3) (17... c6) 18. Rf5) 17... O-O-O 18. a5 Qd4 19. Qxd4 cxd4
+20. Na4 Nf4 21. R1f2 Be7 22. Ba1 f6 23. Nb2 Ng6 24. Nc4 Bb4 25. Bb2 Ne7 26. h3
+Nc6 27. g4 Nxa5 28. Nxa5 Bxa5 29. Rf1 Bb4 30. Ra1 a5 31. Rff1 Rd6 32. Kg2 g6 33.
+Kg3 h5 34. gxh5 gxh5+ 35. Kh4 Rg5 36. Rg1 Rxg1 37. Rxg1 f5 38. Rg8+ Kd7 39. exf5
+Rf6 40. Rg7+ Kd6 41. Rg5 Ke7 42. Kxh5 Bd6 43. Bc1 Kf7 0-1

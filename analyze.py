@@ -26,9 +26,11 @@ def getTactics():
     prev_turn_score = 0
     turn = 'white'
     move_number = 0
+    potential_tactic = False
     # simulate moves
     for move in game.mainline_moves():
         move_number += 1
+        
         print("move: " + str(move) + ", move number: " + str(move_number))
         # get eval of position 
         start_fen = board.fen()
@@ -52,9 +54,9 @@ def getTactics():
         after_score_black = after_score_white * -1
 
         tactic_threshold = 300
-        print("prev_turn_score: " + str(prev_turn_score) + ", turn: " + turn + ", user_turn: " + user_turn)
+        print("turn: " + turn + ", user_turn: " + user_turn)
         # check if oppenent made a bad move
-        if(prev_turn_score > tactic_threshold and turn == user_turn):
+        if(potential_tactic == True):
             # check if the tactic was missed
             board.pop()
             board.push(best_move)
@@ -85,13 +87,54 @@ def getTactics():
             
             board.push(move)
             
-        if(turn == 'white'): 
-            prev_turn_score = abs(after_score_white - before_score_white)
-            turn = 'black'
-        elif(turn == 'black'): 
-            prev_turn_score = abs(after_score_black - before_score_black)
-            turn = 'white'
-
+        before_score = 0
+        after_score = 0
+        match turn:
+            case 'white':
+                before_score = before_score_white
+                after_score = after_score_white
+                turn = 'black'
+            case 'black':
+                before_score = before_score_black
+                after_score = after_score_black
+                turn = 'white'
+        
+        print("before_score " + str(before_score) + ", after_score: " + str(after_score))
+        # # high positive
+        # if(before_score >= 500):
+        #     if(after_score <= 0.1 * before_score):
+        #         potential_tactic = True
+        # # normal positive
+        # elif(before_score < 500 and before_score >= 200):
+        #     if(after_score <= before_score - 300):
+        #         potential_tactic = True
+        # # normal negative
+        # elif(before_score < 200 and before_score >= -200):
+        #     if(after_score <= before_score - 300):
+        #         potential_tactic = True
+        # # normal negative
+        # elif(before_score < -200 and before_score >= -500):
+        #     if(after_score <= before_score - 300):
+        #         potential_tactic = True
+        # # high negative
+        # elif(before_score < -500):
+        #     if(after_score <= before_score + 600):
+        #         potential_tactic = True
+        is_tactic = False     
+        if(before_score > 0):
+            if(after_score < -250):
+                if(not potential_tactic): 
+                    potential_tactic = True
+                    is_tactic == True
+        elif(before_score < 0):
+            if(after_score < before_score - 250):
+                is_tactic == True
+                potential_tactic = True
+        
+        if(not is_tactic): potential_tactic = False
+            
+        print("potential_tactic: " + str(potential_tactic))
+            
     engine.quit()
 
     response = json.dumps(puzzles)
