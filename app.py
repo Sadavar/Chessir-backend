@@ -11,13 +11,14 @@ import json
 import time
 
 app = Flask(__name__)
-CORS(app, origins=['localhost:3000','https://chess-trainer-682560c6d2f7.herokuapp.com'])
+CORS(app, support_credentials=True)
 
 @app.route("/")
 def index():
     return "home"
 
 @app.route("/getTactics", methods=['POST'])
+@cross_origin(supports_credentials=True)
 def getTactics():
     args = request.get_json()
     def algo(): 
