@@ -100,26 +100,7 @@ def getTactics():
                 turn = 'white'
         
         print("before_score " + str(before_score) + ", after_score: " + str(after_score))
-        # # high positive
-        # if(before_score >= 500):
-        #     if(after_score <= 0.1 * before_score):
-        #         potential_tactic = True
-        # # normal positive
-        # elif(before_score < 500 and before_score >= 200):
-        #     if(after_score <= before_score - 300):
-        #         potential_tactic = True
-        # # normal negative
-        # elif(before_score < 200 and before_score >= -200):
-        #     if(after_score <= before_score - 300):
-        #         potential_tactic = True
-        # # normal negative
-        # elif(before_score < -200 and before_score >= -500):
-        #     if(after_score <= before_score - 300):
-        #         potential_tactic = True
-        # # high negative
-        # elif(before_score < -500):
-        #     if(after_score <= before_score + 600):
-        #         potential_tactic = True
+        
         is_tactic = False     
         if(before_score > 0):
             if(after_score < -250):

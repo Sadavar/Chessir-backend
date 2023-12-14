@@ -154,5 +154,6 @@ def getTactics():
         response = json.dumps(puzzles)
         print(response)
         yield response
+        
     return Response(algo(), content_type='text/event-stream')
     
