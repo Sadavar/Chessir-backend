@@ -11,14 +11,13 @@ import json
 import time
 
 app = Flask(__name__)
-CORS(app, support_credentials=True)
+CORS(app)
 
 @app.route("/")
 def index():
     return "home"
 
 @app.route("/getTactics", methods=['POST'])
-@cross_origin(supports_credentials=True)
 def getTactics():
     args = request.get_json()
     def algo(): 
@@ -33,8 +32,8 @@ def getTactics():
         headers = game.headers
         
         # configure game and engine
-        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
-        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
+        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
         board = game.board()
         
         # configure board settings
