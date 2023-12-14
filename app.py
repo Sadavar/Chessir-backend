@@ -17,16 +17,8 @@ CORS(app)
 def index():
     return "home"
 
-@app.route('/stream', methods=['POST'])
-def stream():
-    print('streaming')
-    def generate():
-        for row in range(4):
-            yield "Streaming!" + str(row) + "\n"
-            time.sleep(1)
-    return Response(generate(), content_type='text/event-stream')
-
 @app.route("/getTactics", methods=['POST'])
+@cross_origin(origin=['localhost:3000','https://chess-trainer-682560c6d2f7.herokuapp.com'])
 def getTactics():
     args = request.get_json()
     def algo(): 
