@@ -73,15 +73,14 @@ def getTactics():
             if after_move_info["score"].white().score() is None:
                 continue
             
-            match turn:
-                case 'white':
-                    before_move_eval = before_move_info["score"].white().score()
-                    best_move_eval = before_move_eval
-                    after_move_eval = after_move_info["score"].white().score()
-                case 'black':
-                    before_move_eval = before_move_info["score"].black().score()
-                    best_move_eval = before_move_eval
-                    after_move_eval = after_move_info["score"].black().score()
+            if(turn == 'white'):
+                before_move_eval = before_move_info["score"].white().score()
+                best_move_eval = before_move_eval
+                after_move_eval = after_move_info["score"].white().score()
+            else:
+                before_move_eval = before_move_info["score"].black().score()
+                best_move_eval = before_move_eval
+                after_move_eval = after_move_info["score"].black().score()
                             
             # check if oppenent made a bad move
             if(potential_tactic == True and turn == user_turn):
@@ -132,11 +131,11 @@ def getTactics():
                         potential_tactic = True
 
             # change turns
-            match turn:
-                case 'white':
-                    turn = 'black'
-                case 'black':
-                    turn = 'white'
+            if(turn == 'white'):
+                turn == 'black'
+            else:
+                turn == 'white'
+
             
 
         engine.quit()
