@@ -3,9 +3,6 @@
   "builds": [
     { "src": "./app.py", "use": "@vercel/python" }
   ],
-//   "routes": [
-//     { "src": "/(.*)", "dest": "/app.py" }
-//   ],
 "headers": [
         { "source": "/(.*)", "dest": "/app.py", "headers": [{ "key": "Access-Control-Allow-Origin", "value": "*" }] }
     ]
