@@ -5,19 +5,35 @@ import chess.engine
 import chess.pgn
 import io
 import os
-from flask import Flask, request, jsonify, stream_with_context, Response, redirect, url_for
+from flask import Flask, request, jsonify, stream_with_context, Response, redirect, url_for, make_response
 from flask_cors import CORS, cross_origin
 import json
 
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
+
+def _build_cors_preflight_response():
+    response = make_response()
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add('Access-Control-Allow-Headers', "*")
+    response.headers.add('Access-Control-Allow-Methods', "*")
+    return response
+
+def _corsify_actual_response(response):
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+
+
 
 @app.route("/")
 def index():
     return "home"
 
-@app.route("/getTactics", methods=['POST'])
+@app.route("/getTactics", methods=['POST', 'OPTIONS'])
 def getTactics():
+    if(request.method == 'OPTIONS'):
+        return _build_cors_preflight_response()
+    
     args = request.get_json()
     def algo(): 
         puzzles = []
@@ -141,8 +157,9 @@ def getTactics():
         response = json.dumps(puzzles)
         print(response)
         yield response
-        
-    return Response(algo(), content_type='text/event-stream')
+    
+    response = Response(algo(), content_type='text/event-stream')
+    return _corsify_actual_response(response)
 
 if __name__ == "__main__":
     app.run(debug="true")
