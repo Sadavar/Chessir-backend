@@ -5,10 +5,9 @@ import chess.engine
 import chess.pgn
 import io
 import os
-from flask import Flask, request, jsonify, stream_with_context, Response
+from flask import Flask, request, jsonify, stream_with_context, Response, redirect, url_for
 from flask_cors import CORS, cross_origin
 import json
-import time
 
 app = Flask(__name__)
 CORS(app)
@@ -147,4 +146,7 @@ def getTactics():
         yield response
         
     return Response(algo(), content_type='text/event-stream')
+
+if __name__ == "__main__":
+    app.run(debug="true")
     
