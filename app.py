@@ -10,7 +10,7 @@ from flask_cors import CORS, cross_origin
 import json
 
 app = Flask(__name__)
-CORS(app, support_credentials=True)
+# CORS(app, support_credentials=True)
 
 @app.after_request
 def add_headers(response):
@@ -26,7 +26,6 @@ def index():
     return "home"
 
 @app.route("/getTactics", methods=['POST'])
-@cross_origin(supports_credentials=True)
 def getTactics():
     args = request.get_json()
     def algo(): 
