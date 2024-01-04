@@ -136,8 +136,6 @@ def getTactics():
             else:
                 turn == 'white'
 
-            
-
         engine.quit()
 
         response = json.dumps(puzzles)
