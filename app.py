@@ -8,16 +8,84 @@ import os
 from flask import Flask, request, jsonify, stream_with_context, Response, redirect, url_for, make_response
 from flask_cors import CORS, cross_origin
 import json
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app)
+app.config['CORS_HEADERS'] = 'Content-Type'
+
+uri = "mongodb+srv://sadavar:99jack@chesstrainer.d0yivsi.mongodb.net/?retryWrites=true&w=majority"
+# Create a new client and connect to the server
+client = MongoClient(uri, server_api=ServerApi('1'))
+# Send a ping to confirm a successful connection
+try:
+    client.admin.command('ping')
+    print("MongoDB connection successful!")
+except Exception as e:
+    print(e)
 
 @app.route("/")
+@cross_origin()
 def index():
     return "home"
 
+@app.route("/savePuzzle", methods=['POST'])
+@cross_origin()
+def addPuzzle():
+    req = request.get_json()
+    user = req.get('user')
+    puzzle = req.get('puzzle')
+    print(user)
+    print(puzzle)
+    
+    db = client.main
+    collection = db.users
+    
+    puzzle_id = collection.create_index("puzzle_id",unique=True)
+    
+    final_puzzle = {
+            "puzzle_id": puzzle_id,
+            "start_FEN": puzzle["start_FEN"],
+            "end_FEN": puzzle["end_FEN"],
+            "turn_color": puzzle["turn_color"]
+        }
+    
+    # check if the user is in the DB
+    if(collection.find_one({"user": user}) == None):
+        collection.insert_one({"user": user, "puzzles": [final_puzzle]})
+    else:
+        collection.update_one(
+            {"user": user}, 
+            {"$addToSet": {"saved_puzzles": final_puzzle}}
+        )
+    return "success"
+
+@app.route("/getPuzzles", methods=['POST'])
+@cross_origin()
+def getPuzzles():
+    req = request.get_json()
+    user = req.get('user')
+    print(user)
+    
+    db = client.main
+    collection = db.users
+    # check if the user is in the DB
+    if(collection.find_one({"user": user}) == None):
+        return "no puzzles"
+    else:
+        puzzles = collection.find_one({"user": user})["saved_puzzles"]
+        return json.dumps(puzzles)
+       
+
 @app.route("/getTactics", methods=['POST'])
+@cross_origin()
 def getTactics():
+    if request.method == 'OPTIONS':
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        return response
     args = request.get_json()
     def algo(): 
         puzzles = []
@@ -31,8 +99,8 @@ def getTactics():
         headers = game.headers
         
         # configure game and engine
-        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
-        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
+        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
         board = game.board()
         
         # configure board settings
