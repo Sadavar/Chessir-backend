@@ -11,13 +11,14 @@ import json
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 
+from constants import mongo_uri
+
 app = Flask(__name__)
 cors = CORS(app)
 app.config['CORS_HEADERS'] = 'Content-Type'
 
-uri = "mongodb+srv://sadavar:99jack@chesstrainer.d0yivsi.mongodb.net/?retryWrites=true&w=majority"
 # Create a new client and connect to the server
-client = MongoClient(uri, server_api=ServerApi('1'))
+client = MongoClient(mongo_uri, server_api=ServerApi('1'))
 # Send a ping to confirm a successful connection
 try:
     client.admin.command('ping')
@@ -99,8 +100,8 @@ def getTactics():
         headers = game.headers
         
         # configure game and engine
-        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
-        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
+        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
         board = game.board()
         
         # configure board settings
