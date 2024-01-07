@@ -43,18 +43,32 @@ def addPuzzle():
     db = client.main
     collection = db.users
     
-    puzzle_id = collection.create_index("puzzle_id",unique=True)
-    
+    game_info = puzzle["game_info"]
+        
     final_puzzle = {
-            "puzzle_id": puzzle_id,
             "start_FEN": puzzle["start_FEN"],
             "end_FEN": puzzle["end_FEN"],
-            "turn_color": puzzle["turn_color"]
+            "turn_color": puzzle["turn_color"],
+            "name": puzzle["name"],
+            "game_info": {
+                "black": game_info["black"],
+                "black_elo": game_info["black_elo"],
+                "date": game_info["date"],
+                "link": game_info["link"],
+                "result": game_info["result"],
+                "time_control": game_info["time_control"],
+                "white": game_info["white"],
+                "white_elo": game_info["white_elo"]
+            },
+            "date_info": {
+                "date": puzzle["date_info"]["date"],
+                "timestamp": puzzle["date_info"]["timestamp"]
+            }
         }
     
     # check if the user is in the DB
     if(collection.find_one({"user": user}) == None):
-        collection.insert_one({"user": user, "puzzles": [final_puzzle]})
+        collection.insert_one({"user": user, "saved_puzzles": [final_puzzle]})
     else:
         collection.update_one(
             {"user": user}, 
@@ -100,8 +114,8 @@ def getTactics():
         headers = game.headers
         
         # configure game and engine
-        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
-        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
+        engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish-ubuntu')
         board = game.board()
         
         # configure board settings
