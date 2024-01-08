@@ -31,9 +31,54 @@ except Exception as e:
 def index():
     return "home"
 
+@app.route("/deletePuzzle", methods=['DELETE'])
+@cross_origin()
+def deletePuzzle():
+    req = request.get_json()
+    user = req.get('user')
+    puzzle = req.get('puzzle')
+    print(user)
+    print(puzzle)
+    
+    db = client.main
+    collection = db.users
+    
+    game_info = puzzle["game_info"]
+        
+    final_puzzle = {
+            "start_FEN": puzzle["start_FEN"],
+            "end_FEN": puzzle["end_FEN"],
+            "turn_color": puzzle["turn_color"],
+            "name": puzzle["name"],
+            "game_info": {
+                "black": game_info["black"],
+                "black_elo": game_info["black_elo"],
+                "date": game_info["date"],
+                "link": game_info["link"],
+                "result": game_info["result"],
+                "time_control": game_info["time_control"],
+                "white": game_info["white"],
+                "white_elo": game_info["white_elo"]
+            },
+            "date_info": {
+                "date": puzzle["date_info"]["date"],
+                "timestamp": puzzle["date_info"]["timestamp"]
+            }
+        }
+
+    collection.update_one(
+        {"user": user}, 
+        {"$pull": {"saved_puzzles": final_puzzle}}
+    )
+    # check if that puzzle is still in saved_puzzles
+    if(collection.find_one({"user": user, "saved_puzzles": final_puzzle}) == None):
+        return "success, puzzle removed"
+    else:
+        return "failure, puzzle is still in saved puzzles"
+
 @app.route("/savePuzzle", methods=['POST'])
 @cross_origin()
-def addPuzzle():
+def savePuzzle():
     req = request.get_json()
     user = req.get('user')
     puzzle = req.get('puzzle')
@@ -96,11 +141,6 @@ def getPuzzles():
 @app.route("/getTactics", methods=['POST'])
 @cross_origin()
 def getTactics():
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        return response
     args = request.get_json()
     def algo(): 
         puzzles = []
