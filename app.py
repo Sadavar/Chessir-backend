@@ -14,8 +14,14 @@ from pymongo.server_api import ServerApi
 from constants import mongo_uri
 
 app = Flask(__name__)
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+CORS(app)
+# app.config['CORS_HEADERS'] = 'Content-Type'
+
+
+# @app.before_request
+# def basic_authentication():
+#     if request.method.lower() == 'options':
+#         return Response()
 
 # Create a new client and connect to the server
 client = MongoClient(mongo_uri, server_api=ServerApi('1'))
@@ -27,12 +33,12 @@ except Exception as e:
     print(e)
 
 @app.route("/")
-@cross_origin()
+# @cross_origin()
 def index():
     return "home"
 
 @app.route("/deletePuzzle", methods=['DELETE'])
-@cross_origin()
+# @cross_origin()
 def deletePuzzle():
     req = request.get_json()
     user = req.get('user')
@@ -77,7 +83,7 @@ def deletePuzzle():
         return "failure, puzzle is still in saved puzzles"
 
 @app.route("/savePuzzle", methods=['POST'])
-@cross_origin()
+# @cross_origin()
 def savePuzzle():
     req = request.get_json()
     user = req.get('user')
@@ -139,7 +145,7 @@ def getPuzzles():
        
 
 @app.route("/getTactics", methods=['POST'])
-@cross_origin()
+# @cross_origin()
 def getTactics():
     args = request.get_json()
     def algo(): 
