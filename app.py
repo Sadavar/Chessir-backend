@@ -17,8 +17,7 @@ app = Flask(__name__)
 CORS(app)
 # app.config['CORS_HEADERS'] = 'Content-Type'
 
-
-# @app.before_request
+# @current_app.before_request
 # def basic_authentication():
 #     if request.method.lower() == 'options':
 #         return Response()
