@@ -16,12 +16,12 @@ import jwt
 from constants import mongo_uri
 
 app = Flask(__name__)
-# cors = CORS(app)
+cors = CORS(app)
 # set CORS only for localhost:3000
 # cors = CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
-# app.config['CORS_HEADERS'] = 'Content-Type'
+app.config['CORS_HEADERS'] = 'Content-Type'
 
-CORS(app)
+# CORS(app)
 
 # Create a new client and connect to the server
 client = MongoClient(mongo_uri, server_api=ServerApi('1'))
