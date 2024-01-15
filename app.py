@@ -174,9 +174,7 @@ def getTactics():
     def algo():
         puzzles = []
         # read request args
-        # args = request.get_json()
         pgn = args.get('pgn')
-        # pgn = open("test1-pgn.txt", "r").read()
         pgn = io.StringIO(pgn)
         username = args.get('username')
         game = chess.pgn.read_game(pgn)
@@ -252,14 +250,6 @@ def getTactics():
             # check blunder
             # calculate score difference between after_move and best_move (+50 -> -70 = |120|)
             after_best_diff = abs(after_move_eval - best_move_eval)
-
-            # print("checking for blunder")
-            # print("before_move_eval " + str(before_move_eval) + ", best_move_eval: " +
-            #       str(best_move_eval) + ", after_move_eval: " + str(after_move_eval))
-            # print("after_best_diff: " + str(after_best_diff))
-            # print("after_move_eval: " + str(after_move_eval))
-
-            # yield str(after_best_diff) + "\n"
             if (turn == user_turn):
                 yield str(before_move_eval) + "\n"
 
@@ -270,26 +260,18 @@ def getTactics():
                 # if extremely winning -> barely winning
                 if (before_move_eval > 1000):
                     if (after_best_diff > 800 and after_move_eval < 200):
-                        # print(
-                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
                 # if extremely losing -> super losing
                 if (before_move_eval < -1000):
                     if (after_best_diff > 500):
-                        # print(
-                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
                 # if barely winning -> losing
                 if (before_move_eval > 0):
                     if (after_best_diff > 300 and after_move_eval < -250):
-                        # print(
-                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
                 # if barely losing -> extremely losing
                 if (before_move_eval < 0):
                     if (after_best_diff > 300):
-                        # print(
-                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
 
             # change turns
