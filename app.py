@@ -197,8 +197,8 @@ def getTactics():
 
         # simulate moves
         for move in game.mainline_moves():
-            print("\nmove: " + str(move) + ", move number: " + str(move_number))
-            print("turn: " + turn + ", user_turn: " + user_turn)
+            # print("\nmove: " + str(move) + ", move number: " + str(move_number))
+            # print("turn: " + turn + ", user_turn: " + user_turn)
 
             # increment move number
             new_move += 1
@@ -242,20 +242,22 @@ def getTactics():
                 best_move_diff = abs(best_move_eval - after_move_eval)
                 best_move_diff_threshold = 50
                 # check if the tactic was missed by threshold, a decent but not best move is allowed
-                print("best_move_diff: " + str(best_move_diff))
+                # print("best_move_diff: " + str(best_move_diff))
                 if (best_move_diff > best_move_diff_threshold):
                     puzzle = [before_move_fen, best_move_fen, turn]
                     puzzles.append(puzzle)
+                    print("Found tactic, puzzle:")
+                    print(puzzle)
 
             # check blunder
             # calculate score difference between after_move and best_move (+50 -> -70 = |120|)
             after_best_diff = abs(after_move_eval - best_move_eval)
 
-            print("checking for blunder")
-            print("before_move_eval " + str(before_move_eval) + ", best_move_eval: " +
-                  str(best_move_eval) + ", after_move_eval: " + str(after_move_eval))
-            print("after_best_diff: " + str(after_best_diff))
-            print("after_move_eval: " + str(after_move_eval))
+            # print("checking for blunder")
+            # print("before_move_eval " + str(before_move_eval) + ", best_move_eval: " +
+            #       str(best_move_eval) + ", after_move_eval: " + str(after_move_eval))
+            # print("after_best_diff: " + str(after_best_diff))
+            # print("after_move_eval: " + str(after_move_eval))
 
             # yield str(after_best_diff) + "\n"
             if (turn == user_turn):
@@ -268,26 +270,26 @@ def getTactics():
                 # if extremely winning -> barely winning
                 if (before_move_eval > 1000):
                     if (after_best_diff > 800 and after_move_eval < 200):
-                        print(
-                            "Blunder!------------------------------------------------!")
+                        # print(
+                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
                 # if extremely losing -> super losing
                 if (before_move_eval < -1000):
                     if (after_best_diff > 500):
-                        print(
-                            "Blunder!------------------------------------------------!")
+                        # print(
+                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
                 # if barely winning -> losing
                 if (before_move_eval > 0):
                     if (after_best_diff > 300 and after_move_eval < -250):
-                        print(
-                            "Blunder!------------------------------------------------!")
+                        # print(
+                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
                 # if barely losing -> extremely losing
                 if (before_move_eval < 0):
                     if (after_best_diff > 300):
-                        print(
-                            "Blunder!------------------------------------------------!")
+                        # print(
+                        #     "Blunder!------------------------------------------------!")
                         potential_tactic = True
 
             # change turns
