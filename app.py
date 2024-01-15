@@ -13,7 +13,6 @@ from pymongo.server_api import ServerApi
 from datetime import datetime, timedelta
 import jwt
 
-
 from constants import mongo_uri
 
 app = Flask(__name__)
@@ -35,6 +34,7 @@ except Exception as e:
 
 
 @app.route("/login", methods=['POST'])
+@cross_origin()
 def login():
     user = request.get_json().get('user')
     print("logging in user: " + user)
@@ -51,11 +51,13 @@ def login():
 
 
 @app.route("/")
+@cross_origin()
 def index():
     return "home"
 
 
 @app.route("/deletePuzzle", methods=['DELETE'])
+@cross_origin()
 def deletePuzzle():
     req = request.get_json()
     user = req.get('user')
@@ -101,6 +103,7 @@ def deletePuzzle():
 
 
 @app.route("/savePuzzle", methods=['POST'])
+@cross_origin()
 def savePuzzle():
     req = request.get_json()
     user = req.get('user')
@@ -146,6 +149,7 @@ def savePuzzle():
 
 
 @app.route("/getPuzzles", methods=['POST'])
+@cross_origin()
 def getPuzzles():
     req = request.get_json()
     user = req.get('user')
@@ -162,6 +166,7 @@ def getPuzzles():
 
 
 @app.route("/getTactics", methods=['POST'])
+@cross_origin()
 def getTactics():
     args = request.get_json()
 
