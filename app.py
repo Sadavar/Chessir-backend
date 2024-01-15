@@ -18,11 +18,13 @@ from constants import mongo_uri
 app = Flask(__name__)
 # cors = CORS(app)
 # set CORS only for localhost:3000
-# cors = CORS(app, resources={r"/*": {"origins": "http://localhost:3000"}})
+# cors = CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
 # app.config['CORS_HEADERS'] = 'Content-Type'
 
-cors = CORS(app)
-app.config['CORS_HEADERS'] = 'Content-Type'
+# app.config['CORS_HEADERS'] = 'Content-Type'
+# CORS(app, resources={r"/*": {"origins": "*"}})
+
+CORS(app)
 
 # Create a new client and connect to the server
 client = MongoClient(mongo_uri, server_api=ServerApi('1'))
@@ -35,7 +37,6 @@ except Exception as e:
 
 
 @app.route("/login", methods=['POST'])
-@cross_origin()
 def login():
     user = request.get_json().get('user')
     print("logging in user: " + user)
@@ -52,13 +53,11 @@ def login():
 
 
 @app.route("/")
-@cross_origin()
 def index():
     return "home"
 
 
 @app.route("/deletePuzzle", methods=['DELETE'])
-@cross_origin()
 def deletePuzzle():
     req = request.get_json()
     user = req.get('user')
@@ -104,7 +103,6 @@ def deletePuzzle():
 
 
 @app.route("/savePuzzle", methods=['POST'])
-@cross_origin()
 def savePuzzle():
     req = request.get_json()
     user = req.get('user')
@@ -150,7 +148,6 @@ def savePuzzle():
 
 
 @app.route("/getPuzzles", methods=['POST'])
-@cross_origin()
 def getPuzzles():
     req = request.get_json()
     user = req.get('user')
@@ -167,7 +164,6 @@ def getPuzzles():
 
 
 @app.route("/getTactics", methods=['POST'])
-@cross_origin()
 def getTactics():
     args = request.get_json()
 
@@ -181,7 +177,8 @@ def getTactics():
         headers = game.headers
 
         # configure game and engine
-        # engine = chess.engine.SimpleEngine.popen_uci(os.getcwd() + '/stockfish')
+        # engine = chess.engine.SimpleEngine.popen_uci(
+        #     os.getcwd() + '/stockfish')
         engine = chess.engine.SimpleEngine.popen_uci(
             os.getcwd() + '/stockfish-ubuntu')
         board = game.board()
@@ -251,7 +248,8 @@ def getTactics():
             # calculate score difference between after_move and best_move (+50 -> -70 = |120|)
             after_best_diff = abs(after_move_eval - best_move_eval)
             if (turn == user_turn):
-                yield str(before_move_eval) + "\n"
+                yield json.dumps({"eval": str(before_move_eval)})
+                # yield str(before_move_eval) + "\n"
 
             prev_potential_tactic = potential_tactic
             potential_tactic = False
@@ -281,10 +279,15 @@ def getTactics():
                 turn == 'white'
 
         engine.quit()
-
-        response = json.dumps(puzzles)
-        print(response)
-        yield response
+        print("puzzles:")
+        print(puzzles)
+        if (len(puzzles) == 0):
+            yield json.dumps({"puzzles": "no puzzles"})
+        else:
+            yield json.dumps({"puzzles": puzzles})
+        # response = json.dumps(puzzles)
+        # print(response)
+        # yield response
 
     return Response(algo(), content_type='text/event-stream')
 
