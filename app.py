@@ -239,7 +239,7 @@ def getTactics():
                 # check if the tactic was missed by threshold, a decent but not best move is allowed
                 # print("best_move_diff: " + str(best_move_diff))
                 if (best_move_diff > best_move_diff_threshold):
-                    puzzle = [before_move_fen, best_move_fen, turn]
+                    puzzle = [before_move_fen, best_move_fen, user_turn]
                     puzzles.append(puzzle)
                     print("Found tactic, puzzle:")
                     print(puzzle)
@@ -249,7 +249,6 @@ def getTactics():
             after_best_diff = abs(after_move_eval - best_move_eval)
             if (turn == user_turn):
                 yield json.dumps({"eval": str(before_move_eval)})
-                # yield str(before_move_eval) + "\n"
 
             prev_potential_tactic = potential_tactic
             potential_tactic = False
@@ -274,9 +273,9 @@ def getTactics():
 
             # change turns
             if (turn == 'white'):
-                turn == 'black'
+                turn = 'black'
             else:
-                turn == 'white'
+                turn = 'white'
 
         engine.quit()
         print("puzzles:")
@@ -285,9 +284,6 @@ def getTactics():
             yield json.dumps({"puzzles": "no puzzles"})
         else:
             yield json.dumps({"puzzles": puzzles})
-        # response = json.dumps(puzzles)
-        # print(response)
-        # yield response
 
     return Response(algo(), content_type='text/event-stream')
 
