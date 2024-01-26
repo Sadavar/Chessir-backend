@@ -1,6 +1,6 @@
 #!/bin/sh
 
-from puzzle import algo
+from puzzle import analyze_pgn
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
 import json
@@ -161,7 +161,7 @@ def getPuzzles():
 @app.route("/getTactics", methods=['POST'])
 def getTactics():
     args = request.get_json()
-    return Response(algo(args), content_type='text/event-stream')
+    return Response(analyze_pgn(args.get("pgn"), args.get("username")), content_type='text/event-stream')
 
 
 if __name__ == "__main__":
