@@ -12,8 +12,9 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from datetime import datetime, timedelta
 import jwt
+import logging
 
-from constants import mongo_uri
+from constants import mongo_uri, JWT_SECRET
 
 app = Flask(__name__)
 # cors = CORS(app)
@@ -26,29 +27,39 @@ app = Flask(__name__)
 
 CORS(app)
 
-# Create a new client and connect to the server
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Create MongoDB client
 client = MongoClient(mongo_uri, server_api=ServerApi('1'))
-# Send a ping to confirm a successful connection
 try:
     client.admin.command('ping')
-    print("MongoDB connection successful!")
+    logger.info("MongoDB connection successful!")
 except Exception as e:
-    print(e)
+    logger.error(f"MongoDB connection failed: {e}")
+
+db = client.main
+users_collection = db.users
 
 
-@app.route("/login", methods=['POST'])
-def login():
-    user = request.get_json().get('user')
-    print("logging in user: " + user)
-    # Token expiration time (e.g., 30 minutes)
+def generate_jwt_token(user: str) -> str:
     expiration_time = datetime.utcnow() + timedelta(minutes=300)
     payload = {
         'user': user,
         'exp': expiration_time,
     }
-    token = jwt.encode(
-        payload, "examplekey", algorithm='HS256')
+    return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
 
+
+@app.route("/login", methods=['POST'])
+def login():
+    user = request.json.get('user')
+    if not user:
+        return jsonify({'error': 'User is required'}), 400
+    logger.info(f"Logging in user: {user}")
+    token = generate_jwt_token(user)
     return jsonify({'token': token})
 
 
@@ -62,11 +73,9 @@ def deletePuzzle():
     req = request.get_json()
     user = req.get('user')
     puzzle = req.get('puzzle')
-    print(user)
-    print(puzzle)
 
-    db = client.main
-    collection = db.users
+    if not user or not puzzle:
+        return jsonify({'error': 'User and puzzle are required'}), 400
 
     game_info = puzzle["game_info"]
 
@@ -91,15 +100,15 @@ def deletePuzzle():
         }
     }
 
-    collection.update_one(
+    result = users_collection.update_one(
         {"user": user},
         {"$pull": {"saved_puzzles": final_puzzle}}
     )
-    # check if that puzzle is still in saved_puzzles
-    if (collection.find_one({"user": user, "saved_puzzles": final_puzzle}) == None):
+
+    if result.modified_count > 0:
         return "success, puzzle removed"
     else:
-        return "failure, puzzle is still in saved puzzles"
+        return "failure, puzzle not found"
 
 
 @app.route("/savePuzzle", methods=['POST'])
@@ -107,11 +116,11 @@ def savePuzzle():
     req = request.get_json()
     user = req.get('user')
     puzzle = req.get('puzzle')
-    print(user)
-    print(puzzle)
 
-    db = client.main
-    collection = db.users
+    if not user or not puzzle:
+        return jsonify({'error': 'User and puzzle are required'}), 400
+
+    logger.info(f"Saving puzzle for user: {user}")
 
     game_info = puzzle["game_info"]
 
@@ -137,10 +146,12 @@ def savePuzzle():
     }
 
     # check if the user is in the DB
-    if (collection.find_one({"user": user}) == None):
-        collection.insert_one({"user": user, "saved_puzzles": [final_puzzle]})
+    user_doc = users_collection.find_one({"user": user})
+    if not user_doc:
+        users_collection.insert_one(
+            {"user": user, "saved_puzzles": [final_puzzle]})
     else:
-        collection.update_one(
+        users_collection.update_one(
             {"user": user},
             {"$addToSet": {"saved_puzzles": final_puzzle}}
         )
@@ -151,16 +162,17 @@ def savePuzzle():
 def getPuzzles():
     req = request.get_json()
     user = req.get('user')
-    print(user)
 
-    db = client.main
-    collection = db.users
-    # check if the user is in the DB
-    if (collection.find_one({"user": user}) == None):
-        return "no puzzles"
-    else:
-        puzzles = collection.find_one({"user": user})["saved_puzzles"]
-        return json.dumps(puzzles)
+    if not user:
+        return jsonify({'error': 'User is required'}), 400
+
+    logger.info(f"Fetching puzzles for user: {user}")
+
+    user_doc = users_collection.find_one({"user": user})
+    if not user_doc:
+        return jsonify({'puzzles': "no puzzles"})
+
+    return jsonify(user_doc.get("saved_puzzles", []))
 
 
 @app.route("/getTactics", methods=['POST'])
@@ -168,17 +180,18 @@ def getTactics():
     args = request.get_json()
 
     def algo():
-        puzzles = []
         # read request args
-        pgn = args.get('pgn')
-        pgn = io.StringIO(pgn)
+        pgn = io.StringIO(args.get('pgn'))
         username = args.get('username')
+
+        if not pgn or not username:
+            yield json.dumps({"puzzles": "no puzzles"})
+            return
+
         game = chess.pgn.read_game(pgn)
         headers = game.headers
 
         # configure game and engine
-        # engine = chess.engine.SimpleEngine.popen_uci(
-        #     os.getcwd() + '/stockfish')
         engine = chess.engine.SimpleEngine.popen_uci(
             os.getcwd() + '/stockfish-ubuntu')
         board = game.board()
@@ -191,6 +204,7 @@ def getTactics():
         potential_tactic = False
 
         # simulate moves
+        puzzles = []
         for move in game.mainline_moves():
             # print("\nmove: " + str(move) + ", move number: " + str(move_number))
             # print("turn: " + turn + ", user_turn: " + user_turn)
@@ -241,8 +255,6 @@ def getTactics():
                 if (best_move_diff > best_move_diff_threshold):
                     puzzle = [before_move_fen, best_move_fen, user_turn]
                     puzzles.append(puzzle)
-                    print("Found tactic, puzzle:")
-                    print(puzzle)
 
             # check blunder
             # calculate score difference between after_move and best_move (+50 -> -70 = |120|)
@@ -278,8 +290,7 @@ def getTactics():
                 turn = 'white'
 
         engine.quit()
-        print("puzzles:")
-        print(puzzles)
+        logger.info(f"Puzzles: {puzzles}")
         if (len(puzzles) == 0):
             yield json.dumps({"puzzles": "no puzzles"})
         else:
