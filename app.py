@@ -1,6 +1,7 @@
+import psutil
 from quart import Quart, request, jsonify, Response
-# Import cors and route_cors from quart_cors
 from quart_cors import cors, route_cors
+from celery import Celery
 import chess
 import chess.engine
 import chess.pgn
@@ -17,12 +18,7 @@ import asyncio
 from constants import mongo_uri, JWT_SECRET
 
 app = Quart(__name__)
-app = cors(
-    app,
-    allow_origin="*",
-    allow_headers=["Content-Type"],
-    allow_methods=["GET", "POST", "DELETE", "OPTIONS"]
-)
+app = cors(app, allow_origin="*")
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -42,11 +38,32 @@ users_collection = db.users
 
 def generate_jwt_token(user: str) -> str:
     expiration_time = datetime.utcnow() + timedelta(minutes=300)
-    payload = {
-        'user': user,
-        'exp': expiration_time,
-    }
+    payload = {'user': user, 'exp': expiration_time}
     return jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+
+# Celery configuration
+
+
+def make_celery(app):
+    celery = Celery(
+        app.import_name,
+        backend=os.environ.get('CELERY_RESULT_BACKEND',
+                               'redis://localhost:6379/0'),
+        broker=os.environ.get('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+    )
+    celery.conf.update(app.config)
+    return celery
+
+
+app.config.update(
+    CELERY_BROKER_URL=os.environ.get(
+        'CELERY_BROKER_URL', 'redis://localhost:6379/0'),
+    CELERY_RESULT_BACKEND=os.environ.get(
+        'CELERY_RESULT_BACKEND', 'redis://localhost:6379/0')
+)
+
+
+celery = make_celery(app)
 
 
 @app.route("/login", methods=['POST'])
@@ -176,131 +193,150 @@ async def getPuzzles():
     return jsonify(user_doc.get("saved_puzzles", []))
 
 
-async def run_analyse(engine, board, limit):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(None, engine.analyse, board, limit)
+def log_resources():
+    process = psutil.Process(os.getpid())
+    memory_info = process.memory_info()
+    logger.info(f"Memory Usage: RSS={memory_info.rss}, VMS={memory_info.vms}")
+    logger.info(f"CPU Usage: {process.cpu_percent(interval=1.0)}%")
+
+
+@celery.task
+def run_stockfish_analysis(pgn, username):
+    log_resources()  # Log resource usage at the start of the task
+
+    game = chess.pgn.read_game(io.StringIO(pgn))
+    headers = game.headers
+
+    # stockfish_path = os.path.join(os.getcwd(), 'stockfish')
+    stockfish_path = os.path.join(os.getcwd(), 'stockfish-ubuntu')
+    logger.info(f"Using Stockfish at: {stockfish_path}")
+
+    try:
+        engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+        logger.info("Stockfish engine loaded successfully")
+    except Exception as e:
+        logger.error(f"Could not load Stockfish engine: {e}")
+        return {'error': f'Could not load Stockfish engine: {e}'}
+
+    board = game.board()
+    user_turn = 'white' if username in headers.get("White") else 'black'
+    turn = 'white'
+    new_move = 0
+    move_number = 1
+    potential_tactic = False
+
+    puzzles = []
+    prev_potential_tactic = False
+    try:
+        for move in game.mainline_moves():
+            # log_resources()  # Log resource usage periodically
+            logger.info(f"Move: {move}, Move Number: {move_number}")
+
+            new_move += 1
+            if new_move == 2:
+                move_number += 1
+                new_move = 0
+
+            before_move_fen = board.fen()
+            before_move_info = engine.analyse(
+                board, chess.engine.Limit(time=0.05))
+
+            best_move = before_move_info["pv"][0]
+            board.push(best_move)
+            best_move_fen = board.fen()
+            board.pop()
+
+            board.push(move)
+            after_move_info = engine.analyse(
+                board, chess.engine.Limit(time=0.05))
+
+            if before_move_info["score"].white().score() is None:
+                continue
+            if after_move_info["score"].white().score() is None:
+                continue
+
+            if turn == 'white':
+                before_move_eval = before_move_info["score"].white().score()
+                best_move_eval = before_move_eval
+                after_move_eval = after_move_info["score"].white().score()
+            else:
+                before_move_eval = before_move_info["score"].black().score()
+                best_move_eval = before_move_eval
+                after_move_eval = after_move_info["score"].black().score()
+
+            if potential_tactic and turn == user_turn:
+                best_move_diff = abs(best_move_eval - after_move_eval)
+                best_move_diff_threshold = 50
+
+                if best_move_diff > best_move_diff_threshold:
+                    puzzle = [before_move_fen, best_move_fen, user_turn]
+                    puzzles.append(puzzle)
+
+            after_best_diff = abs(after_move_eval - best_move_eval)
+
+            potential_tactic = False
+            if not prev_potential_tactic:
+                if before_move_eval > 1000 and after_best_diff > 800 and after_move_eval < 200:
+                    potential_tactic = True
+                elif before_move_eval < -1000 and after_best_diff > 500:
+                    potential_tactic = True
+                elif before_move_eval > 0 and after_best_diff > 300 and after_move_eval < -250:
+                    potential_tactic = True
+                elif before_move_eval < 0 and after_best_diff > 300:
+                    potential_tactic = True
+
+            prev_potential_tactic = potential_tactic
+            turn = 'black' if turn == 'white' else 'white'
+    except Exception as e:
+        logger.error(f"Error during analysis: {e}")
+        return {'error': f'Error during analysis: {e}'}
+    finally:
+        try:
+            engine.quit()
+        except Exception as e:
+            logger.error(f"Error quitting engine: {e}")
+
+    logger.info(f"Puzzles: {puzzles}")
+    return {'puzzles': puzzles if puzzles else "no puzzles"}
 
 
 @app.route("/getTactics", methods=['POST'])
 @route_cors(allow_origin="*")
 async def getTactics():
     args = await request.get_json()
+    pgn = args.get('pgn')
+    username = args.get('username')
 
-    async def algo():
-        pgn = io.StringIO(args.get('pgn'))
-        username = args.get('username')
+    if not pgn or not username:
+        return jsonify({"error": "User and PGN are required"}), 400
 
-        if not pgn or not username:
-            yield json.dumps({"puzzles": "no puzzles"})
-            return
+    # Start Celery task
+    result = run_stockfish_analysis.delay(pgn, username)
 
-        game = chess.pgn.read_game(pgn)
-        headers = game.headers
+    # Return task ID to the client
+    return jsonify({"task_id": result.id})
 
-        # Choose engine
-        # stockfish_path = os.path.join(os.getcwd(), 'stockfish')
-        stockfish_path = os.path.join(os.getcwd(), 'stockfish-ubuntu')
-        logger.info(f"Using Stockfish at: {stockfish_path}")
 
-        try:
-            engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
-        except Exception as e:
-            logger.error(f"Could not load Stockfish engine: {e}")
-            yield json.dumps({"puzzles": "no puzzles"})
-            return
-
-        board = game.board()
-
-        user_turn = 'white' if username in headers.get("White") else 'black'
-        turn = 'white'
-        new_move = 0
-        move_number = 1
-        potential_tactic = False
-
-        puzzles = []
-        try:
-            for move in game.mainline_moves():
-                new_move += 1
-                if (new_move == 2):
-                    move_number += 1
-                    new_move = 0
-
-                before_move_fen = board.fen()
-                before_move_info = await run_analyse(engine, board, chess.engine.Limit(time=0.05))
-
-                best_move = before_move_info["pv"][0]
-                board.push(best_move)
-                best_move_fen = board.fen()
-                board.pop()
-
-                board.push(move)
-                after_move_info = await run_analyse(engine, board, chess.engine.Limit(time=0.05))
-
-                if before_move_info["score"].white().score() is None:
-                    continue
-                if after_move_info["score"].white().score() is None:
-                    continue
-
-                if (turn == 'white'):
-                    before_move_eval = before_move_info["score"].white(
-                    ).score()
-                    best_move_eval = before_move_eval
-                    after_move_eval = after_move_info["score"].white().score()
-                else:
-                    before_move_eval = before_move_info["score"].black(
-                    ).score()
-                    best_move_eval = before_move_eval
-                    after_move_eval = after_move_info["score"].black().score()
-
-                if (potential_tactic == True and turn == user_turn):
-                    best_move_diff = abs(best_move_eval - after_move_eval)
-                    best_move_diff_threshold = 50
-
-                    if (best_move_diff > best_move_diff_threshold):
-                        puzzle = [before_move_fen, best_move_fen, user_turn]
-                        puzzles.append(puzzle)
-
-                after_best_diff = abs(after_move_eval - best_move_eval)
-                if (turn == user_turn):
-                    yield json.dumps({"eval": str(before_move_eval)})
-
-                prev_potential_tactic = potential_tactic
-                potential_tactic = False
-
-                if (prev_potential_tactic == False):
-                    if (before_move_eval > 1000):
-                        if (after_best_diff > 800 and after_move_eval < 200):
-                            potential_tactic = True
-                    if (before_move_eval < -1000):
-                        if (after_best_diff > 500):
-                            potential_tactic = True
-                    if (before_move_eval > 0):
-                        if (after_best_diff > 300 and after_move_eval < -250):
-                            potential_tactic = True
-                    if (before_move_eval < 0):
-                        if (after_best_diff > 300):
-                            potential_tactic = True
-
-                if (turn == 'white'):
-                    turn = 'black'
-                else:
-                    turn = 'white'
-        except Exception as e:
-            logger.error(f"Error during analysis: {e}")
-            yield json.dumps({"error": "Analysis failure"})
-        finally:
-            try:
-                engine.quit()
-            except Exception as e:
-                logger.error(f"Error during engine quit: {e}")
-
-        logger.info(f"Puzzles: {puzzles}")
-        if (len(puzzles) == 0):
-            yield json.dumps({"puzzles": "no puzzles"})
-        else:
-            yield json.dumps({"puzzles": puzzles})
-
-    return Response(algo(), content_type='text/event-stream')
+@app.route("/getTaskResult/<task_id>", methods=['GET'])
+@route_cors(allow_origin="*")
+async def get_task_result(task_id):
+    task = run_stockfish_analysis.AsyncResult(task_id)
+    if task.state == 'PENDING':
+        response = {
+            'state': task.state,
+            'status': 'Pending...'
+        }
+    elif task.state != 'FAILURE':
+        response = {
+            'state': task.state,
+            'result': task.result
+        }
+    else:
+        response = {
+            'state': task.state,
+            'status': str(task.info)
+        }
+    return jsonify(response)
 
 if __name__ == "__main__":
     app.run(debug=True)
