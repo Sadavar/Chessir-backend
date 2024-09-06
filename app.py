@@ -1,32 +1,28 @@
-#!/bin/sh
-
+from quart import Quart, request, jsonify, Response
+# Import cors and route_cors from quart_cors
+from quart_cors import cors, route_cors
 import chess
 import chess.engine
 import chess.pgn
 import io
 import os
-from flask import Flask, request, jsonify, stream_with_context, Response, redirect, url_for, make_response
-from flask_cors import CORS, cross_origin
 import json
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from datetime import datetime, timedelta
 import jwt
 import logging
+import asyncio
 
 from constants import mongo_uri, JWT_SECRET
 
-app = Flask(__name__)
-# cors = CORS(app)
-# set CORS only for localhost:3000
-# cors = CORS(app, resources={r"/*": {"origins": "http://localhost:5173"}})
-# app.config['CORS_HEADERS'] = 'Content-Type'
-
-# app.config['CORS_HEADERS'] = 'Content-Type'
-# CORS(app, resources={r"/*": {"origins": "*"}})
-
-CORS(app)
-
+app = Quart(__name__)
+app = cors(
+    app,
+    allow_origin="*",
+    allow_headers=["Content-Type"],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"]
+)
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -54,8 +50,10 @@ def generate_jwt_token(user: str) -> str:
 
 
 @app.route("/login", methods=['POST'])
-def login():
-    user = request.json.get('user')
+@route_cors(allow_origin="*")
+async def login():
+    data = await request.json
+    user = data.get('user')
     if not user:
         return jsonify({'error': 'User is required'}), 400
     logger.info(f"Logging in user: {user}")
@@ -64,13 +62,15 @@ def login():
 
 
 @app.route("/")
-def index():
+@route_cors(allow_origin="*")
+async def index():
     return "home"
 
 
 @app.route("/deletePuzzle", methods=['DELETE'])
-def deletePuzzle():
-    req = request.get_json()
+@route_cors(allow_origin="*")
+async def deletePuzzle():
+    req = await request.get_json()
     user = req.get('user')
     puzzle = req.get('puzzle')
 
@@ -112,8 +112,9 @@ def deletePuzzle():
 
 
 @app.route("/savePuzzle", methods=['POST'])
-def savePuzzle():
-    req = request.get_json()
+@route_cors(allow_origin="*")
+async def savePuzzle():
+    req = await request.get_json()
     user = req.get('user')
     puzzle = req.get('puzzle')
 
@@ -145,7 +146,6 @@ def savePuzzle():
         }
     }
 
-    # check if the user is in the DB
     user_doc = users_collection.find_one({"user": user})
     if not user_doc:
         users_collection.insert_one(
@@ -159,8 +159,9 @@ def savePuzzle():
 
 
 @app.route("/getPuzzles", methods=['POST'])
-def getPuzzles():
-    req = request.get_json()
+@route_cors(allow_origin="*")
+async def getPuzzles():
+    req = await request.get_json()
     user = req.get('user')
 
     if not user:
@@ -175,12 +176,17 @@ def getPuzzles():
     return jsonify(user_doc.get("saved_puzzles", []))
 
 
-@app.route("/getTactics", methods=['POST'])
-def getTactics():
-    args = request.get_json()
+async def run_analyse(engine, board, limit):
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, engine.analyse, board, limit)
 
-    def algo():
-        # read request args
+
+@app.route("/getTactics", methods=['POST'])
+@route_cors(allow_origin="*")
+async def getTactics():
+    args = await request.get_json()
+
+    async def algo():
         pgn = io.StringIO(args.get('pgn'))
         username = args.get('username')
 
@@ -191,105 +197,103 @@ def getTactics():
         game = chess.pgn.read_game(pgn)
         headers = game.headers
 
-        # configure game and engine
-        engine = chess.engine.SimpleEngine.popen_uci(
-            os.getcwd() + '/stockfish-ubuntu')
+        # Choose engine
+        # stockfish_path = os.path.join(os.getcwd(), 'stockfish')
+        stockfish_path = os.path.join(os.getcwd(), 'stockfish-ubuntu')
+        logger.info(f"Using Stockfish at: {stockfish_path}")
+
+        try:
+            engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+        except Exception as e:
+            logger.error(f"Could not load Stockfish engine: {e}")
+            yield json.dumps({"puzzles": "no puzzles"})
+            return
+
         board = game.board()
 
-        # configure board settings
         user_turn = 'white' if username in headers.get("White") else 'black'
         turn = 'white'
         new_move = 0
         move_number = 1
         potential_tactic = False
 
-        # simulate moves
         puzzles = []
-        for move in game.mainline_moves():
-            # print("\nmove: " + str(move) + ", move number: " + str(move_number))
-            # print("turn: " + turn + ", user_turn: " + user_turn)
+        try:
+            for move in game.mainline_moves():
+                new_move += 1
+                if (new_move == 2):
+                    move_number += 1
+                    new_move = 0
 
-            # increment move number
-            new_move += 1
-            if (new_move == 2):
-                move_number += 1
-                new_move = 0
+                before_move_fen = board.fen()
+                before_move_info = await run_analyse(engine, board, chess.engine.Limit(time=0.05))
 
-            # get before move info
-            before_move_fen = board.fen()
-            before_move_info = engine.analyse(
-                board, chess.engine.Limit(time=0.05))
+                best_move = before_move_info["pv"][0]
+                board.push(best_move)
+                best_move_fen = board.fen()
+                board.pop()
 
-            # get best move info
-            best_move = before_move_info["pv"][0]
-            board.push(best_move)
-            best_move_fen = board.fen()
-            board.pop()
+                board.push(move)
+                after_move_info = await run_analyse(engine, board, chess.engine.Limit(time=0.05))
 
-            # get after move info
-            board.push(move)
-            after_move_info = engine.analyse(
-                board, chess.engine.Limit(time=0.05))
+                if before_move_info["score"].white().score() is None:
+                    continue
+                if after_move_info["score"].white().score() is None:
+                    continue
 
-            # set move evals
-            if before_move_info["score"].white().score() is None:
-                continue
-            if after_move_info["score"].white().score() is None:
-                continue
+                if (turn == 'white'):
+                    before_move_eval = before_move_info["score"].white(
+                    ).score()
+                    best_move_eval = before_move_eval
+                    after_move_eval = after_move_info["score"].white().score()
+                else:
+                    before_move_eval = before_move_info["score"].black(
+                    ).score()
+                    best_move_eval = before_move_eval
+                    after_move_eval = after_move_info["score"].black().score()
 
-            if (turn == 'white'):
-                before_move_eval = before_move_info["score"].white().score()
-                best_move_eval = before_move_eval
-                after_move_eval = after_move_info["score"].white().score()
-            else:
-                before_move_eval = before_move_info["score"].black().score()
-                best_move_eval = before_move_eval
-                after_move_eval = after_move_info["score"].black().score()
+                if (potential_tactic == True and turn == user_turn):
+                    best_move_diff = abs(best_move_eval - after_move_eval)
+                    best_move_diff_threshold = 50
 
-            # check if oppenent made a bad move
-            if (potential_tactic == True and turn == user_turn):
-                best_move_diff = abs(best_move_eval - after_move_eval)
-                best_move_diff_threshold = 50
-                # check if the tactic was missed by threshold, a decent but not best move is allowed
-                # print("best_move_diff: " + str(best_move_diff))
-                if (best_move_diff > best_move_diff_threshold):
-                    puzzle = [before_move_fen, best_move_fen, user_turn]
-                    puzzles.append(puzzle)
+                    if (best_move_diff > best_move_diff_threshold):
+                        puzzle = [before_move_fen, best_move_fen, user_turn]
+                        puzzles.append(puzzle)
 
-            # check blunder
-            # calculate score difference between after_move and best_move (+50 -> -70 = |120|)
-            after_best_diff = abs(after_move_eval - best_move_eval)
-            if (turn == user_turn):
-                yield json.dumps({"eval": str(before_move_eval)})
+                after_best_diff = abs(after_move_eval - best_move_eval)
+                if (turn == user_turn):
+                    yield json.dumps({"eval": str(before_move_eval)})
 
-            prev_potential_tactic = potential_tactic
-            potential_tactic = False
+                prev_potential_tactic = potential_tactic
+                potential_tactic = False
 
-            if (prev_potential_tactic == False):
-                # if extremely winning -> barely winning
-                if (before_move_eval > 1000):
-                    if (after_best_diff > 800 and after_move_eval < 200):
-                        potential_tactic = True
-                # if extremely losing -> super losing
-                if (before_move_eval < -1000):
-                    if (after_best_diff > 500):
-                        potential_tactic = True
-                # if barely winning -> losing
-                if (before_move_eval > 0):
-                    if (after_best_diff > 300 and after_move_eval < -250):
-                        potential_tactic = True
-                # if barely losing -> extremely losing
-                if (before_move_eval < 0):
-                    if (after_best_diff > 300):
-                        potential_tactic = True
+                if (prev_potential_tactic == False):
+                    if (before_move_eval > 1000):
+                        if (after_best_diff > 800 and after_move_eval < 200):
+                            potential_tactic = True
+                    if (before_move_eval < -1000):
+                        if (after_best_diff > 500):
+                            potential_tactic = True
+                    if (before_move_eval > 0):
+                        if (after_best_diff > 300 and after_move_eval < -250):
+                            potential_tactic = True
+                    if (before_move_eval < 0):
+                        if (after_best_diff > 300):
+                            potential_tactic = True
 
-            # change turns
-            if (turn == 'white'):
-                turn = 'black'
-            else:
-                turn = 'white'
+                if (turn == 'white'):
+                    turn = 'black'
+                else:
+                    turn = 'white'
+        except Exception as e:
+            logger.error(f"Error during analysis: {e}")
+            yield json.dumps({"error": "Analysis failure"})
+        finally:
+            try:
+                engine.quit()
+            except Exception as e:
+                logger.error(f"Error during engine quit: {e}")
 
-        engine.quit()
         logger.info(f"Puzzles: {puzzles}")
         if (len(puzzles) == 0):
             yield json.dumps({"puzzles": "no puzzles"})
@@ -298,6 +302,5 @@ def getTactics():
 
     return Response(algo(), content_type='text/event-stream')
 
-
 if __name__ == "__main__":
-    app.run(debug="true")
+    app.run(debug=True)
