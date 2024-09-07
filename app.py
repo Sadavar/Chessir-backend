@@ -200,104 +200,121 @@ def log_resources():
     logger.info(f"CPU Usage: {process.cpu_percent(interval=1.0)}%")
 
 
-@celery.task
-def run_stockfish_analysis(pgn, username):
-    log_resources()  # Log resource usage at the start of the task
-
-    game = chess.pgn.read_game(io.StringIO(pgn))
-    headers = game.headers
-
-    # stockfish_path = os.path.join(os.getcwd(), 'stockfish')
-    stockfish_path = os.path.join(os.getcwd(), 'stockfish-ubuntu')
-    logger.info(f"Using Stockfish at: {stockfish_path}")
-
+@celery.task(bind=True)
+def run_stockfish_analysis(self, pgn, username):
     try:
-        engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
-        logger.info("Stockfish engine loaded successfully")
-    except Exception as e:
-        logger.error(f"Could not load Stockfish engine: {e}")
-        return {'error': f'Could not load Stockfish engine: {e}'}
+        log_resources()  # Log resource usage at the start of the task
 
-    board = game.board()
-    user_turn = 'white' if username in headers.get("White") else 'black'
-    turn = 'white'
-    new_move = 0
-    move_number = 1
-    potential_tactic = False
+        game = chess.pgn.read_game(io.StringIO(pgn))
+        headers = game.headers
 
-    puzzles = []
-    prev_potential_tactic = False
-    try:
-        for move in game.mainline_moves():
-            # log_resources()  # Log resource usage periodically
-            logger.info(f"Move: {move}, Move Number: {move_number}")
+        # stockfish_path = os.path.join(os.getcwd(), 'stockfish')
+        stockfish_path = os.path.join(os.getcwd(), '/app/stockfish-ubuntu')
+        logger.info(f"Using Stockfish at: {stockfish_path}")
 
-            new_move += 1
-            if new_move == 2:
-                move_number += 1
-                new_move = 0
-
-            before_move_fen = board.fen()
-            before_move_info = engine.analyse(
-                board, chess.engine.Limit(time=0.05))
-
-            best_move = before_move_info["pv"][0]
-            board.push(best_move)
-            best_move_fen = board.fen()
-            board.pop()
-
-            board.push(move)
-            after_move_info = engine.analyse(
-                board, chess.engine.Limit(time=0.05))
-
-            if before_move_info["score"].white().score() is None:
-                continue
-            if after_move_info["score"].white().score() is None:
-                continue
-
-            if turn == 'white':
-                before_move_eval = before_move_info["score"].white().score()
-                best_move_eval = before_move_eval
-                after_move_eval = after_move_info["score"].white().score()
-            else:
-                before_move_eval = before_move_info["score"].black().score()
-                best_move_eval = before_move_eval
-                after_move_eval = after_move_info["score"].black().score()
-
-            if potential_tactic and turn == user_turn:
-                best_move_diff = abs(best_move_eval - after_move_eval)
-                best_move_diff_threshold = 50
-
-                if best_move_diff > best_move_diff_threshold:
-                    puzzle = [before_move_fen, best_move_fen, user_turn]
-                    puzzles.append(puzzle)
-
-            after_best_diff = abs(after_move_eval - best_move_eval)
-
-            potential_tactic = False
-            if not prev_potential_tactic:
-                if before_move_eval > 1000 and after_best_diff > 800 and after_move_eval < 200:
-                    potential_tactic = True
-                elif before_move_eval < -1000 and after_best_diff > 500:
-                    potential_tactic = True
-                elif before_move_eval > 0 and after_best_diff > 300 and after_move_eval < -250:
-                    potential_tactic = True
-                elif before_move_eval < 0 and after_best_diff > 300:
-                    potential_tactic = True
-
-            prev_potential_tactic = potential_tactic
-            turn = 'black' if turn == 'white' else 'white'
-    except Exception as e:
-        logger.error(f"Error during analysis: {e}")
-        return {'error': f'Error during analysis: {e}'}
-    finally:
         try:
-            engine.quit()
+            engine = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+            logger.info("Stockfish engine loaded successfully")
         except Exception as e:
-            logger.error(f"Error quitting engine: {e}")
+            logger.error(f"Could not load Stockfish engine: {e}")
+            self.update_state(state='FAILURE', meta={
+                              'exc_type': type(e).__name__, 'exc_message': str(e)})
+            raise e
 
-    logger.info(f"Puzzles: {puzzles}")
-    return {'puzzles': puzzles if puzzles else "no puzzles"}
+        # Continue with analysis...
+
+        try:
+            board = game.board()
+            user_turn = 'white' if username in headers.get(
+                "White") else 'black'
+            turn = 'white'
+            new_move = 0
+            move_number = 1
+            potential_tactic = False
+
+            puzzles = []
+            prev_potential_tactic = False
+
+            for move in game.mainline_moves():
+                logger.info(f"Move: {move}, Move Number: {move_number}")
+
+                new_move += 1
+                if new_move == 2:
+                    move_number += 1
+                    new_move = 0
+
+                before_move_fen = board.fen()
+                before_move_info = engine.analyse(
+                    board, chess.engine.Limit(time=0.05))
+
+                best_move = before_move_info["pv"][0]
+                board.push(best_move)
+                best_move_fen = board.fen()
+                board.pop()
+
+                board.push(move)
+                after_move_info = engine.analyse(
+                    board, chess.engine.Limit(time=0.05))
+
+                if before_move_info["score"].white().score() is None:
+                    continue
+                if after_move_info["score"].white().score() is None:
+                    continue
+
+                if turn == 'white':
+                    before_move_eval = before_move_info["score"].white(
+                    ).score()
+                    best_move_eval = before_move_eval
+                    after_move_eval = after_move_info["score"].white().score()
+                else:
+                    before_move_eval = before_move_info["score"].black(
+                    ).score()
+                    best_move_eval = before_move_eval
+                    after_move_eval = after_move_info["score"].black().score()
+
+                if potential_tactic and turn == user_turn:
+                    best_move_diff = abs(best_move_eval - after_move_eval)
+                    best_move_diff_threshold = 50
+
+                    if best_move_diff > best_move_diff_threshold:
+                        puzzle = [before_move_fen, best_move_fen, user_turn]
+                        puzzles.append(puzzle)
+
+                after_best_diff = abs(after_move_eval - best_move_eval)
+
+                potential_tactic = False
+                if not prev_potential_tactic:
+                    if before_move_eval > 1000 and after_best_diff > 800 and after_move_eval < 200:
+                        potential_tactic = True
+                    elif before_move_eval < -1000 and after_best_diff > 500:
+                        potential_tactic = True
+                    elif before_move_eval > 0 and after_best_diff > 300 and after_move_eval < -250:
+                        potential_tactic = True
+                    elif before_move_eval < 0 and after_best_diff > 300:
+                        potential_tactic = True
+
+                prev_potential_tactic = potential_tactic
+                turn = 'black' if turn == 'white' else 'white'
+        except Exception as e:
+            logger.error(f"Error during analysis: {e}")
+            self.update_state(state='FAILURE', meta={
+                              'exc_type': type(e).__name__, 'exc_message': str(e)})
+            raise e
+
+        finally:
+            try:
+                engine.quit()
+            except Exception as e:
+                logger.error(f"Error quitting engine: {e}")
+
+        logger.info(f"Puzzles: {puzzles}")
+        return {'puzzles': puzzles if puzzles else "no puzzles"}
+
+    except Exception as e:
+        logger.error(f"Unhandled exception: {e}")
+        self.update_state(state='FAILURE', meta={
+                          'exc_type': type(e).__name__, 'exc_message': str(e)})
+        raise e
 
 
 @app.route("/getTactics", methods=['POST'])
@@ -320,23 +337,39 @@ async def getTactics():
 @app.route("/getTaskResult/<task_id>", methods=['GET'])
 @route_cors(allow_origin="*")
 async def get_task_result(task_id):
-    task = run_stockfish_analysis.AsyncResult(task_id)
+    try:
+        task = run_stockfish_analysis.AsyncResult(task_id)
+    except Exception as e:
+        message = f"Error retrieving task result for task_id {task_id}: {e}"
+        logger.error(message)
+        return jsonify({"error": "Error retrieving task result"}), 500
+
     if task.state == 'PENDING':
-        response = {
+        return jsonify({
             'state': task.state,
             'status': 'Pending...'
-        }
-    elif task.state != 'FAILURE':
-        response = {
+        }), 202  # 202 Accepted indicates that the request has been accepted for processing, but not completed
+
+    elif task.state == 'FAILURE':
+        return jsonify({
+            'state': task.state,
+            'status': 'Task failed',
+            'error': str(task.info)
+        }), 500  # 500 Internal Server Error indicates that there was a server error during task execution
+
+    elif task.state == 'SUCCESS':
+        return jsonify({
             'state': task.state,
             'result': task.result
-        }
+        }), 200  # 200 OK indicates that the request was successfully processed
+
     else:
-        response = {
-            'state': task.state,
-            'status': str(task.info)
-        }
-    return jsonify(response)
+        message = f"Error retrieving task result for task_id {task_id}: {e}"
+        logger.error(message)
+        return jsonify({
+            'error': 'Unexpected task state'
+        }), 500  # 500 Internal Server Error indicates an unexpected condition
+
 
 if __name__ == "__main__":
     app.run(debug=True)
