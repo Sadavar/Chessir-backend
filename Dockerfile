@@ -27,6 +27,9 @@ COPY . .
 RUN chmod +x /app/stockfish-ubuntu
 RUN chmod +x /app/stockfish
 
+RUN chmod +x stockfish-ubuntu
+RUN chmod +x stockfish
+
 # Copy the entrypoint script and ensure it has the correct permissions
 RUN chmod +x docker-entrypoint.sh
 

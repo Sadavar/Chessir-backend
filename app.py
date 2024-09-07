@@ -14,14 +14,21 @@ from datetime import datetime, timedelta
 import jwt
 import logging
 import asyncio
+import sys
+import subprocess
 
 from constants import mongo_uri, JWT_SECRET
 
 app = Quart(__name__)
 app = cors(app, allow_origin="*")
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Configure logging to output to stdout
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(name)s %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
+)
+
 logger = logging.getLogger(__name__)
 
 # Create MongoDB client
@@ -200,6 +207,26 @@ def log_resources():
     logger.info(f"CPU Usage: {process.cpu_percent(interval=1.0)}%")
 
 
+def get_stockfish_binary():
+    base_path = os.path.join(os.getcwd(), 'stockfish')
+    alternate_path = os.path.join('/app', 'stockfish-ubuntu')
+
+    logger.info("Choosing Stockfish")
+    for path in [base_path, alternate_path]:
+        try:
+            # Try to run the binary with a simple command to verify it works
+            result = subprocess.run(
+                [path, 'uci'], capture_output=True, text=True)
+            if result.returncode == 0:
+                logger.info(f"Using Stockfish at: {path}")
+                return path
+        except Exception as e:
+            logger.error(f"Failed to run Stockfish at {path}: {e}")
+
+    # If neither binary works, raise an exception
+    raise RuntimeError("No working Stockfish binary found")
+
+
 @celery.task(bind=True)
 def run_stockfish_analysis(self, pgn, username):
     try:
@@ -208,8 +235,7 @@ def run_stockfish_analysis(self, pgn, username):
         game = chess.pgn.read_game(io.StringIO(pgn))
         headers = game.headers
 
-        # stockfish_path = os.path.join(os.getcwd(), 'stockfish')
-        stockfish_path = os.path.join(os.getcwd(), '/app/stockfish-ubuntu')
+        stockfish_path = get_stockfish_binary()
         logger.info(f"Using Stockfish at: {stockfish_path}")
 
         try:
