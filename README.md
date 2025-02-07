@@ -2,9 +2,9 @@
 
 This is **Chessir**, a platform which will analyze your chess games and output chess puzzles for you to train on. 
 
-`https://www.chessir.com`
+[Try it at www.chessir.com](https://www.chessir.com)
 
-![alt demo gif](Chess-Demo.gif)
+![alt demo gif](Chessir.gif)
 
 ## Backend Architecture
 

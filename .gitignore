@@ -1,1 +1,5 @@
 .vercel
+constants.py
+backend-key.pem
+__pychache__/*
+__pychache__
